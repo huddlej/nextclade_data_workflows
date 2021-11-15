@@ -292,6 +292,20 @@ rule clades:
             --clades {input.clades} \
             --output-node-data {output.node_data} 2>&1 | tee {log}
         """
+
+rule assign_pango_to_internal:
+    input:
+        
+
+rule pango_to_node_json:
+    input:
+        pango = "builds/{build_name}/pango_default.csv"
+    output:
+        node_data = build_dir + "/{build_name}/pango.json"
+    shell:
+        """
+        python scripts/pango_to_node_json.py {input.pango} {output.node_data}
+        """
         
 rule colors:
     message: "Constructing colors file"
@@ -329,7 +343,8 @@ def _get_node_data_by_wildcards(wildcards):
         rules.refine.output.node_data,
         rules.ancestral.output.node_data,
         rules.translate.output.node_data,
-        rules.clades.output.node_data,
+        rules.pango_to_node_json.output.node_data,
+        # rules.clades.output.node_data,
         rules.aa_muts_explicit.output.node_data
     ]
     if "distances" in config: inputs.append(rules.distances.output.node_data)
