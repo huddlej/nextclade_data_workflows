@@ -42,7 +42,7 @@ rule generate_sample_sequences:
 rule join_sample_sequences:
     input: expand("examples/{build_name}_example_sequences.txt", build_name = config["samples"].keys()),
     output: "examples/example_sequences.txt",
-    shell: "cat {input} > {output}"
+    shell: "cat {input} | sort | uniq > {output}"
 
 rule generate_bgzip:
     message: "Convert sequences from xz to bgzip"
