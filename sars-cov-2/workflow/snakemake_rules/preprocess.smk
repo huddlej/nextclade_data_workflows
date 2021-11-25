@@ -49,7 +49,7 @@ rule download_sequences:
         address = lambda w: config['origins']['sequences']
     output:
         "data/sequences.fasta.xz"
-    shell: "curl {params.address} -o {output}"
+    shell: "aws s3 cp {params.address} {output}"
 
 rule download_metadata:
     message: "Downloading metadata from {params.address} -> {output}"
@@ -58,7 +58,24 @@ rule download_metadata:
         address = lambda w: config['origins']['metadata']
     output:
         metadata = "data/metadata_raw.tsv"
-    shell: "curl {params.address} | {params.deflate} > {output:q}"
+    shell: "aws s3 cp {params.address} - | {params.deflate} {input} > {output:q}"
+
+# rule download_sequences:
+#     message: "Downloading sequences from {params.address} -> {output[0]}"
+#     params:
+#         address = lambda w: config['origins']['sequences']
+#     output:
+#         "data/sequences.fasta.xz"
+#     shell: "curl {params.address} -o {output}"
+
+# rule download_metadata:
+#     message: "Downloading metadata from {params.address} -> {output}"
+#     params:
+#         deflate = lambda w: _infer_decompression(config['origins']['metadata']),
+#         address = lambda w: config['origins']['metadata']
+#     output:
+#         metadata = "data/metadata_raw.tsv"
+#     shell: "curl {params.address} | {params.deflate} > {output:q}"
 
 rule select_frameshifts:
     input:
@@ -162,17 +179,19 @@ rule strip_pango_strain_names:
     shell: "awk -F',' '{{print $1}}' {input} | tail -n+2 >{output}"
 
 rule diagnostic:
-    message: "Scanning metadata {input.metadata} for problematic sequences."
+    message: "Scanning metadata {input.metadata} for problematic sequences. Removing sequences with >{params.clock_filter} deviation from the clock and with more than {params.snp_clusters}."
     input:
-        metadata = "data/metadata.tsv"
+        metadata = "data/metadata.tsv",
     output:
-        to_exclude = "pre-processed/problematic_exclude.txt"
+        to_exclude = "pre-processed/problematic_exclude.txt",
+        exclude_reasons = "pre-processed/exclude_reasons.txt",
     params:
-        clock_filter_floor = -8,
-        clock_filter_ceil = 20,
+        clock_filter = 12,
+        clock_filter_recent = 17,
+        clock_filter_lower_limit = -10,
         snp_clusters = 1,
-        rare_mutations = 30,
-        clock_plus_rare = 100,
+        rare_mutations = 45,
+        clock_plus_rare = 50,
     log:
         "logs/diagnostics.txt"
     benchmark:
@@ -184,12 +203,13 @@ rule diagnostic:
         """
         python3 scripts/diagnostic.py \
             --metadata {input.metadata} \
-            --clock-filter-floor {params.clock_filter_floor} \
-            --clock-filter-ceil {params.clock_filter_ceil} \
+            --clock-filter {params.clock_filter} \
             --rare-mutations {params.rare_mutations} \
             --clock-plus-rare {params.clock_plus_rare} \
             --snp-clusters {params.snp_clusters} \
-            --output-exclusion-list {output.to_exclude} 2>&1 | tee {log}
+            --output-exclusion-list {output.to_exclude} \
+            --output-exclusion-reasons {output.exclude_reasons} \
+            2>&1 | tee {log}
         """
 
 rule index_sequences:
@@ -229,11 +249,38 @@ rule fix_pango_lineages:
         2>&1
         """
 
+rule nextclade_strainnames:
+    message: "Extract strain names using tsv-select"
+    input: "data/metadata.tsv"
+    output: "pre-processed/metadata_strainnames.tsv"
+    shell:
+        """
+        tsv-select -H -f strain {input} >{output}
+        """
+
+rule pango_strain_rename:
+    message: "Convert pango strain names to nextclade strain names"
+    input:
+        metadata_strainnames = "pre-processed/metadata_strainnames.tsv",
+        pango = "pre-processed/pango_raw.csv",
+    output:
+        pango_designations = "pre-processed/pango_designations_nextstrain_names.csv",
+        pango_designated_strains = "pre-processed/pango_designated_strains_nextstrain_names.txt",
+    shell:
+        """
+        python3 scripts/pango_strain_rename.py \
+        --metadata-strainnames {input.metadata_strainnames} \
+        --pango-in {input.pango} \
+        --pango-designations {output.pango_designations} \
+        --pango-designated-strains {output.pango_designated_strains} \
+        2>&1
+        """
+
 rule open_pango:
     # include only sequences that are in pango.csv using augur filter
     input:
         sequences = "data/sequences.fasta.xz",
-        pango = "pre-processed/pango.csv",
+        pango = "pre-processed/pango_designated_strains_nextstrain_names.txt",
         sequence_index = "pre-processed/sequence_index.tsv",
         metadata = "data/metadata.tsv",
     output: 
