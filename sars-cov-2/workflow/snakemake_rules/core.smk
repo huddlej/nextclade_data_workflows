@@ -320,6 +320,22 @@ rule colors:
             --metadata {input.metadata} 2>&1 | tee {log}
         """
 
+rule lineage_reconstruction:
+    input:
+        tree = rules.refine.output.tree,
+        metadata = build_dir + "/{build_name}/metadata.tsv",
+        aliases = "pre-processed/alias.json"
+    output:
+        outfile = build_dir + "/{build_name}/pango_designation.json"
+    shell:
+        """
+        python3 scripts/lineage_to_internal_nodes.py \
+            --tree {input.tree} \
+            --metadata {input.metadata} \
+            --aliases {input.aliases} \
+            --outfile {output.outfile}
+        """
+
 def _get_node_data_by_wildcards(wildcards):
     """Return a list of node data files to include for a given build's wildcards.
     """

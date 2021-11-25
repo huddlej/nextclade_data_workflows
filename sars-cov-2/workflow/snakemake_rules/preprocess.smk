@@ -147,6 +147,13 @@ rule download_curated_pango:
         source = config["data_source"]["pango"]
     shell: "curl {params.source} -o {output}"
 
+rule download_pango_aliases:
+    output:
+        "pre-processed/alias.json"
+    params:
+        source = config["data_source"]["alias_key"]
+    shell: "curl {params.source} -o {output}"
+
 rule strip_pango_strain_names:
     input:
         "pre-processed/pango_raw.csv"
