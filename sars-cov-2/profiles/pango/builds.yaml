@@ -69,12 +69,12 @@ samples:
   cluster-bad: "--subsample-max-sequences 3 --exclude-where QC_snp_clusters!=bad"
   recent: "--group-by month --subsample-max-sequences 10 --min-date 2021-09-01"
 
-exclude-where-args: "recombinant=True country=Turkey country=Iraq country=Egypt QC_rare_mutations!=good QC_snp_clusters!=good QC_missing_data!=good QC_mixed_sites!=good"
+exclude-where-args: "recombinant=True country=Turkey country=Iraq country=Egypt QC_missing_data!=good QC_mixed_sites!=good"
 
 builds:
   pango:
     subsamples:
-      clades:
+      clade-pango:
         filters: "--min-length 28500 --group-by Nextstrain_clade --subsample-max-sequences 500 --exclude-where"
       early-pango:
         filters: "--min-length 28500 --group-by year month pango_lineage --subsample-max-sequences 200 --max-date 2020-12-31 --exclude-where"
