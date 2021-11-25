@@ -20,8 +20,10 @@ data_source:
   alias_key: "https://raw.githubusercontent.com/cov-lineages/pango-designation/master/pango_designation/alias_key.json"
 
 origins:
-  metadata: "https://data.nextstrain.org/files/ncov/open/metadata.tsv.gz"
-  sequences: "https://data.nextstrain.org/files/ncov/open/sequences.fasta.xz"
+  # metadata: "https://data.nextstrain.org/files/ncov/open/metadata.tsv.gz"
+  # sequences: "https://data.nextstrain.org/files/ncov/open/sequences.fasta.xz"
+  metadata: "s3://nextstrain-ncov-private/metadata.tsv.gz"
+  sequences: "s3://nextstrain-ncov-private/sequences.fasta.xz"
   exclude: "https://raw.githubusercontent.com/nextstrain/ncov/master/defaults/exclude.txt"
   filters: "--min-length 27000"
 
