@@ -44,7 +44,7 @@ def dealias_lineage_name(name, alias_dict):
         return dealiased_letter
 
 
-def candidate_lineage_counts(value_counts):
+def get_candidate_lineage_counts(value_counts):
     candidates = OrderedDict()
     for lineage in value_counts:
         lineage_split = lineage.split(".")
@@ -79,15 +79,17 @@ def get_consensus_lineage(candidates):
 
 
 @click.command()
-@click.option("-t", "--tree", type=click.File("r"), default="data/tree.nwk")
-@click.option("-m", "--metadata", type=click.File("r"), default="data/pango_default.csv")
-@click.option("-o", "--outfile", type=click.File("w"), default="reconstructed.tsv")
-@click.option("-a", "--aliases", type=click.File("r"), default="data/alias_key.json")
-def main(tree, metadata, outfile, aliases):
+@click.option("-t", "--tree", type=click.File("r"), default="builds/pango/tree.nwk")
+@click.option("-d", "--designations", type=click.File("r"), default="pre-processed/pango_raw.csv")
+@click.option(
+    "-o", "--outfile", type=click.File("w"), default="builds/pango/pango_designation.json"
+)
+@click.option("-a", "--aliases", type=click.File("r"), default="pre-processed/alias.json")
+def main(tree, designations, outfile, aliases):
     alias_dict = json.load(aliases)
     alias_dict["A"] = "A"
     alias_dict["B"] = "B"
-    meta = pd.read_csv(metadata)[["taxon", "lineage"]]
+    meta = pd.read_csv(designations)[["taxon", "lineage"]]
     meta["lineage"] = meta["lineage"].apply(lambda x: dealias_lineage_name(x, alias_dict))
     tree = Phylo.read(tree, "newick")
     lookup_dict = lookup_by_names(tree)
@@ -96,19 +98,12 @@ def main(tree, metadata, outfile, aliases):
         internals.append(internal.name)
     internal_lineages = []
     for internal in internals:
-        internal_lineages.append(
-            {
-                "node": internal,
-                "lineage": realias(
-                    get_consensus_lineage(
-                        candidate_lineage_counts(
-                            get_lineage_counts(get_terminal_names(lookup_dict[internal]), meta)
-                        )
-                    ),
-                    alias_dict,
-                ),
-            }
-        )
+        terminal_names = get_terminal_names(lookup_dict[internal])
+        lineage_counts = get_lineage_counts(terminal_names, meta)
+        candidate_lineage_counts = get_candidate_lineage_counts(lineage_counts)
+        consensus_lineage = get_consensus_lineage(candidate_lineage_counts)
+        lineage = realias(consensus_lineage, alias_dict)
+        internal_lineages.append({"node": internal, "lineage": lineage})
     print(internal_lineages)
     fieldnames = ["node", "lineage"]
     dict_writer = csv.DictWriter(outfile, fieldnames=fieldnames)

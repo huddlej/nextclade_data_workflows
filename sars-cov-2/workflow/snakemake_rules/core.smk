@@ -323,7 +323,7 @@ rule colors:
 rule lineage_reconstruction:
     input:
         tree = rules.refine.output.tree,
-        metadata = build_dir + "/{build_name}/metadata.tsv",
+        designations = "pre-processed/pango_raw.csv",
         aliases = "pre-processed/alias.json"
     output:
         outfile = build_dir + "/{build_name}/pango_designation.json"
@@ -331,7 +331,7 @@ rule lineage_reconstruction:
         """
         python3 scripts/lineage_to_internal_nodes.py \
             --tree {input.tree} \
-            --metadata {input.metadata} \
+            --designations {input.designations} \
             --aliases {input.aliases} \
             --outfile {output.outfile}
         """
