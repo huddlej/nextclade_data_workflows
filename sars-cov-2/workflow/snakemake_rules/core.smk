@@ -323,7 +323,7 @@ rule colors:
 rule lineage_reconstruction:
     input:
         tree = rules.refine.output.tree,
-        designations = "pre-processed/pango_raw.csv",
+        designations = "pre-processed/pango_designations_nextstrain_names.csv",
         aliases = "pre-processed/alias.json"
     output:
         outfile = build_dir + "/{build_name}/pango_designation.json"

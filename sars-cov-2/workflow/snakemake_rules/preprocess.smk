@@ -171,13 +171,6 @@ rule download_pango_aliases:
         source = config["data_source"]["alias_key"]
     shell: "curl {params.source} -o {output}"
 
-rule strip_pango_strain_names:
-    input:
-        "pre-processed/pango_raw.csv"
-    output:
-        "pre-processed/pango.csv"
-    shell: "awk -F',' '{{print $1}}' {input} | tail -n+2 >{output}"
-
 rule diagnostic:
     message: "Scanning metadata {input.metadata} for problematic sequences. Removing sequences with >{params.clock_filter} deviation from the clock and with more than {params.snp_clusters}."
     input:
@@ -233,25 +226,9 @@ rule index_sequences:
             --output {output.sequence_index} 2>&1 | tee {log}
         """
 
-rule fix_pango_lineages:
-    message: "Add new column to open_pango_metadata_raw.tsv by joining pango_raw.csv on field strain name"
-    input:
-        metadata = "data/metadata_raw2.tsv",
-        pango_designations = "pre-processed/pango_raw.csv",
-    output:
-        metadata = "data/metadata.tsv",
-    shell:
-        """
-        python3 scripts/fix_open_pango_lineages.py \
-        --metadata {input.metadata} \
-        --designations {input.pango_designations} \
-        --output {output.metadata} \
-        2>&1
-        """
-
 rule nextclade_strainnames:
     message: "Extract strain names using tsv-select"
-    input: "data/metadata.tsv"
+    input: "data/metadata_raw2.tsv"
     output: "pre-processed/metadata_strainnames.tsv"
     shell:
         """
@@ -273,6 +250,22 @@ rule pango_strain_rename:
         --pango-in {input.pango} \
         --pango-designations {output.pango_designations} \
         --pango-designated-strains {output.pango_designated_strains} \
+        2>&1
+        """
+
+rule fix_pango_lineages:
+    message: "Add new column to open_pango_metadata_raw.tsv by joining pango_raw.csv on field strain name"
+    input:
+        metadata = "data/metadata_raw2.tsv",
+        pango_designations = "pre-processed/pango_designations_nextstrain_names.csv",
+    output:
+        metadata = "data/metadata.tsv",
+    shell:
+        """
+        python3 scripts/fix_open_pango_lineages.py \
+        --metadata {input.metadata} \
+        --designations {input.pango_designations} \
+        --output {output.metadata} \
         2>&1
         """
 
