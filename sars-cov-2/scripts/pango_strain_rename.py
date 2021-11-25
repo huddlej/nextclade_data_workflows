@@ -22,15 +22,15 @@ def format(metadata_strainnames, pango_in, pango_designations, pango_designated_
         lambda x: alpha_digits_regex.sub("", x.upper())
     )
 
+    pango_des.drop_duplicates(subset=["canonical"], keep=False, inplace=True)
+    meta_strains.drop_duplicates(subset=["canonical"], keep=False, inplace=True)
+
     pango_des.set_index("canonical", inplace=True)
     meta_strains.set_index("canonical", inplace=True)
 
-    pango_des = pango_des.join(meta_strains, on="canonical")
+    pango_des = pango_des.join(meta_strains, on="canonical", how="left")
 
     pango_des.dropna(inplace=True)
-
-    duplicates = pango_des[pango_des.duplicated(subset=["strain"],keep=False)]
-    duplicates.to_csv("pre-processed/pango_duplicates.csv", sep="\t", index=False)
 
     pango_des.to_csv(pango_designations, columns=["strain", "lineage"], index=False)
     pango_des.to_csv(
