@@ -76,6 +76,7 @@ rule pango_sampling:
         filter_arguments = lambda w: config["builds"][w.build_name]["subsamples"][w.subsample+'-pango']['filters'],
         date = (datetime.date.today() + datetime.timedelta(days=1)).strftime("%Y-%m-%d"),
         exclude_where_args = config["exclude-where-args"],
+        root = config["refinement"]["root"],
     resources:
         # Memory use scales primarily with the size of the metadata file.
         mem_mb=lambda wildcards, input: 15 * int(input.metadata.size / 1024 / 1024)
@@ -88,6 +89,7 @@ rule pango_sampling:
             {params.filter_arguments} {params.exclude_where_args} \
             --query "pango_designated != ''" \
             --priority {input.priority} \
+            --include-where "strain={params.root}" \
             --output {output.sequences} \
             --output-strains {output.strains} 2>&1 | tee {log}
         """ 
