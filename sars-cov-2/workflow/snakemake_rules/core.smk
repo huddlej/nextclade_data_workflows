@@ -78,6 +78,10 @@ rule mask:
         """
         python3 scripts/mask-alignment.py \
             --alignment {input.alignment} \
+            --alignment {input.alignment} \
+            --mask-terminal-gaps \
+            --mask-from-beginning 100 \
+            --mask-from-end 100 \
             {params.mask_arguments} \
             --output {output.alignment} 2>&1 | tee {log}
         """
@@ -326,14 +330,14 @@ rule lineage_reconstruction:
         designations = "pre-processed/pango_designations_nextstrain_names.csv",
         aliases = "pre-processed/alias.json"
     output:
-        outfile = build_dir + "/{build_name}/pango_designation.json"
+        node_data = build_dir + "/{build_name}/pango_designation.json"
     shell:
         """
         python3 scripts/lineage_to_internal_nodes.py \
             --tree {input.tree} \
             --designations {input.designations} \
             --aliases {input.aliases} \
-            --outfile {output.outfile}
+            --outfile {output.node_data}
         """
 
 def _get_node_data_by_wildcards(wildcards):
@@ -345,7 +349,7 @@ def _get_node_data_by_wildcards(wildcards):
         rules.refine.output.node_data,
         rules.ancestral.output.node_data,
         rules.translate.output.node_data,
-        rules.clades.output.node_data,
+        rules.lineage_reconstruction.output.node_data,
         rules.aa_muts_explicit.output.node_data
     ]
     if "distances" in config: inputs.append(rules.distances.output.node_data)

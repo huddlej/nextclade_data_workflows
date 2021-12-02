@@ -26,7 +26,7 @@ def get_terminal_names(clade):
 
 
 def get_lineage_counts(terminal_names, meta):
-    lineages = meta.loc[meta.taxon.isin(terminal_names), "lineage"].value_counts().to_dict()
+    lineages = meta.loc[meta.index.isin(terminal_names), "lineage"].value_counts().to_dict()
     return lineages
 
 
@@ -82,33 +82,45 @@ def get_consensus_lineage(candidates):
 @click.option("-t", "--tree", type=click.File("r"), default="builds/pango/tree.nwk")
 @click.option("-d", "--designations", type=click.File("r"), default="pre-processed/pango_raw.csv")
 @click.option(
-    "-o", "--outfile", type=click.File("w"), default="builds/pango/pango_designation.json"
+    "-o", "--outfile", type=click.File("w"), default="builds/pango/pango_reconstructed.json"
 )
 @click.option("-a", "--aliases", type=click.File("r"), default="pre-processed/alias.json")
 def main(tree, designations, outfile, aliases):
     alias_dict = json.load(aliases)
     alias_dict["A"] = "A"
     alias_dict["B"] = "B"
-    meta = pd.read_csv(designations)[["taxon", "lineage"]]
-    meta["lineage"] = meta["lineage"].apply(lambda x: dealias_lineage_name(x, alias_dict))
     tree = Phylo.read(tree, "newick")
+    meta = pd.read_csv(designations)[["strain", "lineage"]]
+    meta.set_index("strain", inplace=True)
+    output = {"nodes": {}}
+    for tip in tree.get_terminals():
+        try:
+            output["nodes"][tip.name] = {"clade_membership": meta.loc[tip.name]["lineage"]}
+        except:
+            print(f"{tip.name} not found in designations")
+
+    meta["lineage"] = meta["lineage"].apply(lambda x: dealias_lineage_name(x, alias_dict))
+    
     lookup_dict = lookup_by_names(tree)
     internals = []
     for internal in tree.get_nonterminals():
         internals.append(internal.name)
     internal_lineages = []
+
     for internal in internals:
-        terminal_names = get_terminal_names(lookup_dict[internal])
-        lineage_counts = get_lineage_counts(terminal_names, meta)
-        candidate_lineage_counts = get_candidate_lineage_counts(lineage_counts)
-        consensus_lineage = get_consensus_lineage(candidate_lineage_counts)
-        lineage = realias(consensus_lineage, alias_dict)
-        internal_lineages.append({"node": internal, "lineage": lineage})
-    print(internal_lineages)
-    fieldnames = ["node", "lineage"]
-    dict_writer = csv.DictWriter(outfile, fieldnames=fieldnames)
-    dict_writer.writeheader()
-    dict_writer.writerows(internal_lineages)
+        try:
+            terminal_names = get_terminal_names(lookup_dict[internal])
+            lineage_counts = get_lineage_counts(terminal_names, meta)
+            candidate_lineage_counts = get_candidate_lineage_counts(lineage_counts)
+            consensus_lineage = get_consensus_lineage(candidate_lineage_counts)
+            lineage = realias(consensus_lineage, alias_dict)
+            internal_lineages.append({"node": internal, "lineage": lineage})
+            output["nodes"][internal] = {"clade_membership": lineage}
+        except:
+            print(terminal_names, lineage_counts, candidate_lineage_counts, consensus_lineage)
+
+
+    json.dump(output, outfile, indent=4)
 
 
 if __name__ == "__main__":
