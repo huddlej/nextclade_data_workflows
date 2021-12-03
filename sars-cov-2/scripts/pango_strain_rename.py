@@ -32,6 +32,8 @@ def format(metadata_strainnames, pango_in, pango_designations, pango_designated_
 
     pango_des.dropna(inplace=True)
 
+    pango_des.to_csv("pre-processed/pango_joined.tsv", sep="\t")
+
     pango_des.to_csv(pango_designations, columns=["strain", "lineage"], index=False)
     pango_des.to_csv(
         pango_designated_strains, columns=["strain"], header=False, index=False
