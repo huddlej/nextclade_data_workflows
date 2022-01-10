@@ -11,6 +11,8 @@ and produces files
 
 '''
 
+localrules = sample_designated
+
 build_dir = "builds"
 
 rule prepare_build:
@@ -18,97 +20,33 @@ rule prepare_build:
         sequences = build_dir + "/{build_name}/sequences.fasta",
         metadata = build_dir + "/{build_name}/metadata.tsv"
 
-rule subsample:
-    message:
-        """
-        Subsample all sequences by '{wildcards.subsample}' scheme for build '{wildcards.build_name}' with the following parameters:
-        """
+rule sample_designated:
     input:
-        sequences = "data/sequences.fasta.xz",
-        metadata = "data/metadata.tsv",
-        sequence_index = "pre-processed/sequence_index.tsv",
-        problematic_exclude = "pre-processed/problematic_exclude.txt",
-        include = config["files"]["include"],
-        priority = "pre-processed/priority.tsv",
+        metadata = "pre-processed/open_pango_metadata.tsv",
     output:
-        sequences = build_dir + "/{build_name}/sample-{subsample,[^-]*}.fasta",
-        strains=build_dir + "/{build_name}/sample-{subsample,[^-]*}.txt",
-    log:
-        "logs/subsample_{build_name}_{subsample}.txt"
-    benchmark:
-        "benchmarks/subsample_{build_name}_{subsample}.txt"
-    params:
-        filter_arguments = lambda w: config["builds"][w.build_name]["subsamples"][w.subsample]['filters'],
-        date = (datetime.date.today() + datetime.timedelta(days=1)).strftime("%Y-%m-%d"),
-        exclude_where_args = config["exclude-where-args"],
-    resources:
-        # Memory use scales primarily with the size of the metadata file.
-        mem_mb=lambda wildcards, input: 15 * int(input.metadata.size / 1024 / 1024)
-    conda: config["conda_environment"]
+        strains = "builds/pango_subsample.tsv"
     shell:
         """
-        augur filter \
-            --sequences {input.sequences} \
-            --metadata {input.metadata} \
-            --sequence-index {input.sequence_index} \
-            --include {input.include} \
-            --exclude {input.problematic_exclude} \
-            {params.filter_arguments} {params.exclude_where_args} \
-            --query "pango_lineage != ''" \
-            --priority {input.priority} \
-            --output {output.sequences} \
-            --output-strains {output.strains} 2>&1 | tee {log}
+        python scripts/sample_for_pango_build.py
         """
 
 rule pango_sampling:
     input:
         sequences = "pre-processed/open_pango.fasta.xz",
         metadata = "pre-processed/open_pango_metadata.tsv",
-        priority = "pre-processed/priority.tsv",
+        sample_strains = "builds/pango_subsample.tsv"
     output:
-        sequences = build_dir + "/{build_name}/sample-{subsample}-pango.fasta",
-        strains=build_dir + "/{build_name}/sample-{subsample}-pango.txt",
+        sequences = build_dir + "/{build_name}/sequences_raw.fasta",
     log:
         "logs/subsample_{build_name}_{subsample}-pango.txt"
-    benchmark:
-        "benchmarks/subsample_{build_name}_{subsample}-pango.txt"
-    params:
-        filter_arguments = lambda w: config["builds"][w.build_name]["subsamples"][w.subsample+'-pango']['filters'],
-        date = (datetime.date.today() + datetime.timedelta(days=1)).strftime("%Y-%m-%d"),
-        exclude_where_args = config["exclude-where-args"],
-    resources:
-        # Memory use scales primarily with the size of the metadata file.
-        mem_mb=lambda wildcards, input: 15 * int(input.metadata.size / 1024 / 1024)
-    conda: config["conda_environment"]
     shell:
         """
         augur filter \
             --sequences {input.sequences} \
             --metadata {input.metadata} \
-            {params.filter_arguments} {params.exclude_where_args} \
-            --query "pango_designated != ''" \
-            --priority {input.priority} \
-            --output {output.sequences} \
-            --output-strains {output.strains} 2>&1 | tee {log}
-        """ 
-
-rule combine_subsamples:
-    # Similar to rule combine_input_metadata, this rule should only be run if multiple inputs are being used (i.e. multiple origins)
-    message:
-        """
-        Combine and deduplicate aligned & filtered FASTAs from multiple origins in preparation for subsampling: {input}.
-        """
-    input:
-        lambda w: [build_dir + f"/{w.build_name}/sample-{subsample}.fasta"
-                   for subsample in config["builds"][w.build_name]["subsamples"]]
-    output:
-        build_dir + "/{build_name}/sequences_raw.fasta"
-    benchmark:
-        "benchmarks/combine_subsamples_{build_name}.txt"
-    conda: config["conda_environment"]
-    shell:
-        """
-        python3 scripts/combine-and-dedup-fastas.py --input {input} --output {output}
+            --exclude-all \
+            --include {input.sample_strains} \
+            --output {output.sequences} 2>&1 | tee {log}
         """
 
 rule extract_metadata:

@@ -255,6 +255,16 @@ rule open_pango:
             2>&1 | tee {log} 
         """
 
+rule reduce_pango_metadata:
+    input: "pre-processed/open_pango_metadata.tsv",
+    output: "pre-processed/open_pango_metadata_reduced.tsv",
+    shell:
+    """
+        tsv-select -H -f strain,date,missing_data,nonACGTN,rare_mutations,QC_missing_data,QC_mixed_sites,QC_rare_mutations,QC
+        _snp_clusters,QC_frame_shifts,QC_stop_codons,clock_deviation,pango_designated,recombinant \
+        {input} >{output}
+    """
+
 rule strains:
     input: "data/metadata.tsv"
     output: "pre-processed/strains.txt"
