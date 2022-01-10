@@ -26,7 +26,7 @@ class Aliasor:
     def __init__(self):
         import pandas as pd
 
-        aliases = pd.read_json('https://raw.githubusercontent.com/cov-lineages/pango-designation/master/pango_designation/alias_key.json')
+        aliases = pd.read_json('pre-processed/alias.json')
 
         self.alias_dict = {}
         for column in aliases.columns:
