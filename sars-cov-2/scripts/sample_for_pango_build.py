@@ -102,5 +102,5 @@ for name, group in df.groupby('pango_designated'):
 
 #%%
 subsample = pd.concat(samples, ignore_index=True)
-subsample.to_csv('builds/pango_subsample.tsv', sep='\t', index=False)
+subsample.to_csv('builds/nextclade/pango_subsample.tsv', sep='\t', index=False)
 # %%
