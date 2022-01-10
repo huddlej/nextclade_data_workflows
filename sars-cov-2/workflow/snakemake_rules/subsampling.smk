@@ -11,8 +11,6 @@ and produces files
 
 '''
 
-localrules = sample_designated
-
 build_dir = "builds"
 
 rule prepare_build:
@@ -23,8 +21,9 @@ rule prepare_build:
 rule sample_designated:
     input:
         metadata = "pre-processed/open_pango_metadata.tsv",
+        aliases = "pre-processed/alias.json"
     output:
-        strains = "builds/pango_subsample.tsv"
+        strains = build_dir + "/{build_name}/pango_subsample.tsv"
     shell:
         """
         python scripts/sample_for_pango_build.py
@@ -34,11 +33,11 @@ rule pango_sampling:
     input:
         sequences = "pre-processed/open_pango.fasta.xz",
         metadata = "pre-processed/open_pango_metadata.tsv",
-        sample_strains = "builds/pango_subsample.tsv"
+        sample_strains = rules.sample_designated.output.strains
     output:
         sequences = build_dir + "/{build_name}/sequences_raw.fasta",
     log:
-        "logs/subsample_{build_name}_{subsample}-pango.txt"
+        "logs/subsample_{build_name}-pango.txt"
     shell:
         """
         augur filter \
@@ -51,8 +50,7 @@ rule pango_sampling:
 
 rule extract_metadata:
     input:
-        strains = lambda w: [build_dir + f"/{w.build_name}/sample-{subsample}.txt"
-                for subsample in config["builds"][w.build_name]["subsamples"]],
+        strains = rules.sample_designated.output.strains, 
         metadata = "data/metadata.tsv"
     output:
         metadata = rules.prepare_build.input.metadata
