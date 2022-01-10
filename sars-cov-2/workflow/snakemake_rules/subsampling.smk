@@ -62,7 +62,7 @@ rule extract_metadata:
         import pandas as pd
         strains = set()
         with open(input.strains) as fh:
-            strains.update([x.strip() for x in fh if x[0]!='#'])
+            strains.update([x.strip() for x in fh if x[0]!='#'][1:])
 
         d = pd.read_csv(input.metadata, index_col='strain', sep='\t').loc[list(strains)]
         if len(params.adjust):
