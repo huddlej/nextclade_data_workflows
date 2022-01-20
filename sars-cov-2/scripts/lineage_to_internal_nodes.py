@@ -71,6 +71,8 @@ def realias(dealiased, alias_dict):
 
 def get_consensus_lineage(candidates):
     # TODO: #2 figure out how to deal with recombinants like XA
+    # Do not dealias Xs
+    # Remove Xs if it's not all descendent from an X
     count = candidates[""]
     # recombinant_count = recombinant_count(candidates)
     consensus_lineages = fy.select_values(lambda x: x == count, candidates)
@@ -80,9 +82,9 @@ def get_consensus_lineage(candidates):
 
 @click.command()
 @click.option("-t", "--tree", type=click.File("r"), default="builds/pango/tree.nwk")
-@click.option("-d", "--designations", type=click.File("r"), default="pre-processed/pango_raw.csv")
+@click.option("-d", "--designations", type=click.File("r"), default="pre-processed/pango_designations_nextstrain_names.csv")
 @click.option(
-    "-o", "--outfile", type=click.File("w"), default="builds/pango/pango_reconstructed.json"
+    "-o", "--outfile", type=click.File("w"), default="builds/nextclade/pango_reconstructed.json"
 )
 @click.option("-a", "--aliases", type=click.File("r"), default="pre-processed/alias.json")
 def main(tree, designations, outfile, aliases):
